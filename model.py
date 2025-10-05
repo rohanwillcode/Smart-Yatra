@@ -15,7 +15,9 @@ def get_rapido_fare(pickup, drop):
     url = f"https://m.rapido.bike/unup-home/seo/{pickup_encoded}/{drop_encoded}?version=v3"
 
     options = Options()
-    options.add_argument("--headless=new")  # Updated for newer ChromeDriver
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 20)
     fare = "N/A"
@@ -38,7 +40,11 @@ def get_rapido_fare(pickup, drop):
     return fare, url
 
 def get_gobytaxi_fare(pickup, drop):
-    driver = webdriver.Chrome()
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 30)
     fare = "N/A"
 
@@ -61,11 +67,15 @@ def get_gobytaxi_fare(pickup, drop):
         go_btn.click()
         print("Clicked LET'S GO")
 
-        time.sleep(10)
+        # --- FIX STARTS HERE ---
+        # 1. Replaced the fixed time.sleep(10) with a dynamic wait for the results to load.
+        # We now wait for a container with the class 'car-fare-card' which holds the price.
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "car-fare-card")))
 
-        fare = wait.until(EC.presence_of_element_located(
-            (By.XPATH, "//div[contains(text(),'INR')]/preceding-sibling::div")
-        )).text.strip()
+        # 2. Updated the XPath to a more reliable selector to find the first fare displayed.
+        fare_element = driver.find_element(By.XPATH, "(//div[@class='car-fare-card']//div[contains(@class, 'price')])[1]")
+        fare = fare_element.text.strip()
+        # --- FIX ENDS HERE ---
 
     except Exception as e:
         print("❌ GoByTaxi Error:", e)
@@ -109,3 +119,4 @@ def compare_and_save(pickup, drop):
 
     print("✅ Comparison complete. Result returned to app.")
     return result
+
